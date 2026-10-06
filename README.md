@@ -4,7 +4,8 @@
 
 ## 機能
 
-- TODAY / LATER のタスク管理
+- TODAY / THIS WEEK / LATER のタスク管理（月曜始まり・日曜終わり。期限なしはLATER）
+- グループ別の色付きマーカーと、GROUPSからの色変更
 - 四角いチェックボタンで即時完了
 - 完了タスクをHANGARに3日間保持
 - HANGARから未完了へ復帰
@@ -15,14 +16,8 @@
 
 ## 使い方
 
-`index.html`をブラウザで開くだけで使用できます。タスクとルーティーンはブラウザのローカルストレージに保存されます。
+公開版は [MONO](https://goldfishstar0055.github.io/Chatgpt/) から使用できます。`index.html`を直接ブラウザで開くこともできます。外部ライブラリを読み込まない単一HTMLです。タスク、ルーティーン、グループの色はそのブラウザのローカルストレージに保存され、端末間では同期されません。
 
-## GitHub Pagesで公開する場合
+## GitHub Pages
 
-1. リポジトリの **Settings** を開く
-2. **Pages** を選ぶ
-3. **Build and deployment** のSourceを **Deploy from a branch** にする
-4. Branchを **main**、フォルダを **/(root)** にする
-5. **Save** を押す
-
-公開URLは通常 `https://goldfishstar0055.github.io/Chatgpt/` になります。
+`main`への更新は `.github/workflows/pages.yml` により自動でデプロイされます。PagesのSourceは **GitHub Actions** に設定されています。
