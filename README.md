@@ -4,7 +4,7 @@
 
 ## 機能
 
-- TODAY / THIS WEEK / LATER のタスク管理（月曜始まり・日曜終わり。期限なしはLATER）
+- TODAY / NEXT 7 DAYS / LATER のタスク管理（明日から7日後までがNEXT 7 DAYS。8日後以降と期限なしはLATER）
 - グループ別の色付きマーカーと、GROUPSからの色変更
 - 四角いチェックボタンで即時完了
 - 完了タスクをHANGARに3日間保持
