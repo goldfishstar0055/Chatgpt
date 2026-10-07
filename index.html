@@ -91,7 +91,6 @@
     .group-add button:hover { color:var(--ink); }
 
     .inline-add { display:block; margin-top:18px; padding:5px 0; border:0; background:transparent; color:var(--muted); font-size:.76rem; text-align:left; }
-    .inline-add[hidden] { display:none; }
     .inline-add:hover { color:var(--ink); }
 
     .add-button { position:fixed; right:clamp(20px,4vw,50px); bottom:28px; z-index:10; width:54px; height:54px; border:0; border-radius:50%; color:var(--paper); background:var(--ink); font-size:1.5rem; line-height:1; box-shadow:0 10px 28px rgba(0,0,0,.16); transition:transform .2s; }
@@ -153,8 +152,8 @@
   <header><div class="brand"><i></i><span>MONO</span></div><div class="date" id="date"></div></header>
   <main>
     <section class="today-section"><div class="section-head"><h1>TODAY</h1><span id="todayCount"></span></div><div class="task-list" id="todayTasks"></div><button class="inline-add" type="button" data-add-due="today">＋ タスクを追加</button><div class="today-routines" id="todayRoutines"></div></section>
-    <section class="later"><div class="section-head"><h2>THIS WEEK</h2><span id="weekCount"></span></div><div class="task-list" id="weekTasks"></div><button class="inline-add" type="button" data-add-due="tomorrow">＋ タスクを追加</button></section>
-    <section class="later"><div class="section-head"><h2>LATER</h2><span id="laterCount"></span></div><div class="task-list" id="laterTasks"></div><button class="inline-add" type="button" data-add-due="nextWeek">＋ タスクを追加</button></section>
+    <section class="later"><div class="section-head"><h2>NEXT 7 DAYS</h2><span id="weekCount"></span></div><div class="task-list" id="weekTasks"></div><button class="inline-add" type="button" data-add-due="tomorrow">＋ タスクを追加</button></section>
+    <section class="later"><div class="section-head"><h2>LATER</h2><span id="laterCount"></span></div><div class="task-list" id="laterTasks"></div><button class="inline-add" type="button" data-add-due="after7">＋ タスクを追加</button></section>
     <section class="routines"><div class="section-head"><h2>ROUTINE</h2><span id="routineCount"></span></div><div class="tracker-wrap"><div class="tracker" id="tracker"></div></div><button class="inline-add" type="button" id="addRoutine">＋ ルーティーンを追加</button></section>
     <section class="hangar"><div class="section-head"><h2>HANGAR</h2><span id="hangarCount">3 DAYS</span></div><div class="hangar-list" id="hangarList"></div></section>
     <section class="groups"><div class="section-head"><h2>GROUPS</h2><span id="groupCount"></span></div><div class="group-list" id="groupList"></div><form class="group-add" id="groupAdd"><input id="newGroup" maxlength="24" autocomplete="off" placeholder="グループ名" aria-label="新しいグループ名" required /><button type="submit">＋ グループを追加</button></form></section>
@@ -197,18 +196,17 @@
     const registerGroup=name=>{if(name&&!state.groups.includes(name))state.groups.push(name)};
     const HANGAR_TTL=3*864e5;let storageChanged=false;const loadedAt=Date.now();state.tasks.forEach(t=>{if(t.completed&&!t.completedAt){t.completedAt=loadedAt;storageChanged=true}});const loadedCount=state.tasks.length;state.tasks=state.tasks.filter(t=>!t.completed||loadedAt-t.completedAt<HANGAR_TTL);if(storageChanged||state.tasks.length!==loadedCount)localStorage.setItem(STORE,JSON.stringify(state));
     const today=()=>key(new Date()), diff=due=>due?Math.round((new Date(`${due}T00:00:00`)-new Date(`${today()}T00:00:00`))/864e5):9999;
-    const daysLeftThisWeek=()=>((7-new Date().getDay())%7);
     const dueLabel=due=>{if(!due)return'期限なし';const n=diff(due);if(n<0)return`${-n}日超過`;if(n===0)return'今日';if(n===1)return'明日';const d=new Date(`${due}T00:00:00`);return`${d.getMonth()+1}/${d.getDate()}`};
     const score=t=>{const n=diff(t.due);return n<0?-10000+n:n===0?-9000:n===1?-7000:t.due?n:10000+(t.createdAt||0)/1e12}, tasks=()=>state.tasks.filter(t=>!t.completed).sort((a,b)=>score(a)-score(b)), hangarTasks=()=>state.tasks.filter(t=>t.completed&&t.completedAt&&Date.now()-t.completedAt<HANGAR_TTL).sort((a,b)=>b.completedAt-a.completedAt);
     const occurs=(r,d)=>r.days.includes(d.getDay()), save=()=>{localStorage.setItem(STORE,JSON.stringify(state));render()};
     function taskRow(t){const memo=String(t.note||'').trim(),meta=[t.group,t.due?dueLabel(t.due):''].filter(Boolean).join(' · ')+(memo?' · メモ':'');return`<div class="task-row"><button class="check" data-complete="${t.id}" aria-label="${esc(t.title)}を完了"></button><button class="task-content" data-task="${t.id}" aria-label="${esc(t.title)}のメモを編集"><span class="row-name">${t.group?`<i class="group-dot" style="--group-color:${groupColor(t.group)}" aria-hidden="true"></i>`:''}<span class="row-title">${esc(t.title)}</span></span><span class="row-meta">${esc(meta)}</span>${memo?`<span class="note-popover" role="tooltip">${esc(memo).replace(/\n/g,'<br>')}</span>`:''}</button><button class="delete" data-delete="${t.id}" aria-label="削除">×</button></div>`}
     function render(){
-      pruneHangar();const d=new Date(),all=tasks(),last=daysLeftThisWeek(),now=[],week=[],later=[];
-      for(const t of all){const n=diff(t.due);if(t.due&&n<=0)now.push(t);else if(t.due&&n<=last)week.push(t);else later.push(t)}
+      pruneHangar();const d=new Date(),all=tasks(),now=[],week=[],later=[];
+      for(const t of all){const n=diff(t.due);if(t.due&&n<=0)now.push(t);else if(t.due&&n<=7)week.push(t);else later.push(t)}
       $('#date').textContent=`${pad(d.getMonth()+1)}.${pad(d.getDate())} ${DAYS[d.getDay()]}`;
       $('#todayCount').textContent=now.length;$('#todayTasks').innerHTML=now.length?now.map(taskRow).join(''):`<div class="empty">今日のタスクはない。</div>`;
       const daily=state.routines.filter(r=>occurs(r,d));$('#todayRoutines').innerHTML=`<span class="sub-label">ROUTINE</span>`+(daily.length?daily.map(r=>`<button class="routine-pill ${r.checks[today()]?'done':''}" data-routine="${r.id}" aria-pressed="${!!r.checks[today()]}">${esc(r.title)}</button>`).join(''):`<span class="row-meta">なし</span>`);
-      $('#weekCount').textContent=week.length;$('#weekTasks').innerHTML=week.length?week.map(taskRow).join(''):`<div class="empty">今週の予定はない。</div>`; $('[data-add-due="tomorrow"]').hidden=last===0;
+      $('#weekCount').textContent=week.length;$('#weekTasks').innerHTML=week.length?week.map(taskRow).join(''):`<div class="empty">7日以内の予定はない。</div>`;
       $('#laterCount').textContent=later.length;$('#laterTasks').innerHTML=later.length?later.map(taskRow).join(''):`<div class="empty">予定はない。</div>`;
       renderTracker();renderHangar();renderGroups()
     }
@@ -222,7 +220,7 @@
     const backdrop=$('#backdrop'),form=$('#composer'),title=$('#titleInput'),noteBackdrop=$('#noteBackdrop'),noteEditor=$('#noteEditor'),noteInput=$('#noteInput');let repeat=false,composerMode='task',editingRoutineId=null,editingTaskId=null;
     const setRepeat=value=>{repeat=value;$('#repeatSwitch').classList.toggle('on',value);$('#repeatSwitch').setAttribute('aria-checked',String(value));$('#weekdays').classList.toggle('show',value)};
     const resetComposer=()=>{form.reset();composerMode='task';editingRoutineId=null;form.classList.remove('routine-mode');setRepeat(false);$('#customDate').style.display='none'};
-    const openTask=(preset='today')=>{closeNote();resetComposer();if(preset==='nextWeek'){preset='date';$('#customDate').value=key(add(new Date(),daysLeftThisWeek()+1));$('#customDate').style.display='block'}const due=$(`input[name="due"][value="${preset}"]`)||$('input[name="due"][value="today"]');due.checked=true;$('#composerTitle').textContent='NEW TASK';backdrop.classList.add('open');setTimeout(()=>title.focus(),60)};
+    const openTask=(preset='today')=>{closeNote();resetComposer();if(preset==='after7'){preset='date';$('#customDate').value=key(add(new Date(),8));$('#customDate').style.display='block'}const due=$(`input[name="due"][value="${preset}"]`)||$('input[name="due"][value="today"]');due.checked=true;$('#composerTitle').textContent='NEW TASK';backdrop.classList.add('open');setTimeout(()=>title.focus(),60)};
     const openRoutine=(id=null)=>{closeNote();resetComposer();composerMode='routine';editingRoutineId=id;form.classList.add('routine-mode');setRepeat(true);$('#composerTitle').textContent=id?'EDIT ROUTINE':'NEW ROUTINE';const r=id?state.routines.find(x=>x.id===id):null;if(r){title.value=r.title;$('#groupInput').value=r.group||'';$$('input[name="weekday"]').forEach(x=>x.checked=r.days.includes(+x.value))}backdrop.classList.add('open');setTimeout(()=>title.focus(),60)};
     const close=()=>{backdrop.classList.remove('open');resetComposer()};
     const openNote=id=>{const t=state.tasks.find(x=>x.id===id);if(!t)return;close();editingTaskId=id;$('#noteTitle').textContent=t.title;noteInput.value=t.note||'';noteBackdrop.classList.add('open');setTimeout(()=>noteInput.focus(),60)};
