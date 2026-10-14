@@ -66,7 +66,7 @@
     .day.is-today { border-color:var(--ink); }
     .day.done { background:var(--ink); border-color:var(--ink); }
     .day-cell { position:relative; width:18px; height:18px; }
-    .day-note { position:absolute; top:-12px; right:-8px; width:16px; height:16px; padding:0; border:0; border-radius:3px; color:var(--muted); background:var(--paper); font-size:11px; opacity:0; pointer-events:none; }
+    .day-note { position:absolute; top:-12px; right:1px; width:16px; height:16px; padding:0; border:0; border-radius:3px; color:var(--muted); background:var(--paper); font-size:11px; opacity:0; pointer-events:none; }
     .day-cell:hover .day-note,.day-cell:focus-within .day-note { opacity:1; pointer-events:auto; }
     .day-note:hover { color:var(--ink); }
     .routine-note-tooltip { position:fixed; z-index:18; max-width:min(300px,calc(100vw - 24px)); padding:10px 12px; border-radius:8px; color:var(--paper); background:var(--ink); font-size:.72rem; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none; box-shadow:0 9px 26px rgba(0,0,0,.18); }
@@ -228,7 +228,7 @@
     function showRoutineMemo(cell){if(!cell)return;const r=state.routines.find(x=>x.id===cell.dataset.noteRoutine),note=r?.notes?.[cell.dataset.noteKey];if(!note){routineTooltip.hidden=true;return}routineTooltip.textContent=`${cell.dataset.noteKey}\n${note}`;routineTooltip.hidden=false;const rect=cell.getBoundingClientRect(),tip=routineTooltip.getBoundingClientRect();routineTooltip.style.left=`${Math.max(12,Math.min(innerWidth-tip.width-12,rect.right-tip.width))}px`;routineTooltip.style.top=`${Math.max(8,rect.top-tip.height-10>=8?rect.top-tip.height-10:Math.min(innerHeight-tip.height-8,rect.bottom+10))}px`}
     $('#tracker').addEventListener('pointerover',e=>{const cell=e.target.closest('.day-cell');if(cell&&!cell.contains(e.relatedTarget))showRoutineMemo(cell)});
     $('#tracker').addEventListener('pointerout',e=>{const cell=e.target.closest('.day-cell');if(cell&&!cell.contains(e.relatedTarget))routineTooltip.hidden=true});
-    $('#tracker').addEventListener('focusin',e=>showRoutineMemo(e.target.closest('.day-cell')));
+    $('#tracker').addEventListener('focusin',e=>{const cell=e.target.closest('.day-cell');requestAnimationFrame(()=>{if(cell?.contains(document.activeElement))showRoutineMemo(cell)})});
     $('#tracker').addEventListener('focusout',()=>{routineTooltip.hidden=true});
     window.addEventListener('scroll',()=>{routineTooltip.hidden=true},true);
     window.addEventListener('resize',()=>{routineTooltip.hidden=true});
