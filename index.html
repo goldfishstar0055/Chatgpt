@@ -58,10 +58,14 @@
     .sleep-duration { text-align:right; font-size:.72rem; font-variant-numeric:tabular-nums; }
     .sleep-save { width:28px; height:28px; padding:0; border:0; background:transparent; color:var(--muted); font-size:.8rem; }
     .sleep-save:hover { color:var(--ink); }
-    .sleep-archives { margin-top:58px; padding-top:28px; border-top:1px solid var(--line); }
-    .sleep-archives .section-head { margin-bottom:22px; }
-    .sleep-archive-row { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:22px 0; border-bottom:1px solid var(--line); font-size:.76rem; font-variant-numeric:tabular-nums; }
-    .sleep-archive-row strong { font-size:1rem; white-space:nowrap; }
+    .sleep-history { margin-top:58px; padding-top:28px; border-top:1px solid var(--line); }
+    .sleep-history h2 { margin:0 0 12px; font-size:.78rem; letter-spacing:.12em; }
+    .sleep-history .sleep-summary { margin-bottom:26px; }
+    .sleep-chart { display:block; width:100%; min-width:600px; height:auto; overflow:visible; }
+    .sleep-chart text { fill:var(--muted); font-family:inherit; font-size:11px; }
+    .sleep-chart .trend-line { fill:none; stroke:var(--ink); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+    .sleep-chart .trend-point { fill:var(--ink); }
+    .sleep-chart .trend-point:hover,.sleep-chart .trend-point:focus { r:6; outline:none; }
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
     main { width:min(960px,calc(100% - 40px)); margin:0 auto; padding:clamp(56px,9vw,104px) 0 140px; }
@@ -192,7 +196,6 @@
       .screen-tab { width:36px; height:36px; }
       .sleep-summary { gap:12px; flex-wrap:wrap; }
       .sleep-average strong { font-size:1.15rem; }
-      .sleep-archive-row { gap:12px; font-size:.67rem; }
       section { padding-bottom:84px; }
       .row-meta { max-width:88px; overflow:hidden; text-overflow:ellipsis; }
       .tracker-head,.tracker-row { grid-template-columns:minmax(140px,1fr) repeat(7,18px); }
@@ -219,11 +222,11 @@
   </main>
   <main id="healthScreen" role="tabpanel" aria-labelledby="healthTab" hidden>
     <div class="sleep-heading"><h1>SLEEP</h1></div>
-    <div class="sleep-summary"><div><p class="sleep-week" id="sleepWeek"></p><p class="sleep-hint">起床した日に記録 · 月曜はじまり</p></div><div class="sleep-average"><span class="sleep-hint">平均睡眠時間</span><strong id="sleepAverage">—</strong><span class="sleep-hint" id="sleepCount">0 / 7 日 · 目標 7時間</span></div></div>
+    <div class="sleep-summary"><div><p class="sleep-week" id="sleepWeek"></p><p class="sleep-hint">起床した日に記録 · 2日前から7日間</p></div></div>
     <div class="sleep-scroll"><div class="sleep-grid"><div class="sleep-table-head" aria-hidden="true"><span>起床日</span><span>就寝 → 起床</span><div class="sleep-axis"><span>18:00</span><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span></div><span style="text-align:right">睡眠時間</span><span></span></div><div id="sleepRows"></div></div></div>
     <p class="sleep-hint">就寝・起床を入力して ✓ で保存。未入力日は平均に含めません。</p>
     <div id="sleepStatus" class="sr-only" role="status" aria-live="polite"></div>
-    <section class="sleep-archives"><div class="section-head"><h2>ARCHIVE</h2><span>週平均</span></div><div id="sleepArchives"></div></section>
+    <section class="sleep-history"><div class="sleep-summary"><div><h2>LAST 30 DAYS</h2><p class="sleep-hint" id="sleepHistoryRange"></p></div><div class="sleep-average"><span class="sleep-hint">過去30日間の平均睡眠時間</span><strong id="sleepAverage">—</strong><span class="sleep-hint" id="sleepCount">0 / 30 日 · 目標 7時間</span></div></div><div class="sleep-scroll" id="sleepChart"></div><p class="sleep-hint">点にカーソルを合わせると日付と睡眠時間を表示。30日より古い記録は自動で削除します。</p></section>
   </main>
   <button class="add-button" id="openComposer" aria-label="タスクを追加">＋</button>
   <div class="backdrop" id="backdrop" role="dialog" aria-labelledby="composerTitle">
@@ -313,7 +316,6 @@ const Sleep = (()=>{
   const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   const fromKey=k=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(k||''))return null;const d=new Date(`${k}T12:00:00`);return Number.isFinite(+d)&&dateKey(d)===k?d:null};
   const shift=(k,n)=>{const d=fromKey(k);if(!d)return'';d.setDate(d.getDate()+n);return dateKey(d)};
-  const monday=k=>{const d=fromKey(k);return d?shift(k,-((d.getDay()+6)%7)):''};
   const minutes=t=>{if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(t||''))return null;const [h,m]=t.split(':').map(Number);return h*60+m};
   const duration=(bed,wake)=>{const b=minutes(bed),w=minutes(wake);if(b===null||w===null||b===w)return null;return(w-b+1440)%1440};
   const summary=records=>{let totalMinutes=0,count=0;for(const r of records){const n=duration(r?.bed,r?.wake);if(n!==null){totalMinutes+=n;count++}}return{totalMinutes,count}};
@@ -321,8 +323,10 @@ const Sleep = (()=>{
   const format=n=>{if(n===null)return'—';const m=Math.floor(n);return`${Math.floor(m/60)}時間${pad(m%60)}分`};
   const tone=n=>n===null?'sleep-empty':n<420?'sleep-short':'sleep-met';
   const segments=(bed,wake)=>{const n=duration(bed,wake);if(n===null)return[];const start=(minutes(bed)+360)%1440,first=Math.min(n,1440-start);return[{start,length:first},...(first<n?[{start:0,length:n-first}]:[])]};
-  function archive(data,today){const start=monday(today);let changed=false;for(const date of Object.keys(data.days)){if(!fromKey(date)||date>=start)continue;const r=data.days[date],n=duration(r?.bed,r?.wake);if(n!==null){const week=monday(date),old=data.archives[week]||{totalMinutes:0,count:0};data.archives[week]={totalMinutes:old.totalMinutes+n,count:old.count+1}}delete data.days[date];changed=true}return changed}
-  return{dateKey,fromKey,shift,monday,minutes,duration,summary,average,format,tone,segments,archive};
+  const windowDates=today=>Array.from({length:7},(_,i)=>shift(today,i-2));
+  const history=(data,today)=>Array.from({length:30},(_,i)=>{const date=shift(today,i-29),r=data.days[date];return{date,minutes:duration(r?.bed,r?.wake)}});
+  function prune(data,today){const start=shift(today,-29);let changed=false;for(const date of Object.keys(data.days)){if(fromKey(date)&&date>=start&&date<=today)continue;delete data.days[date];changed=true}if(Object.hasOwn(data,'archives')){delete data.archives;changed=true}return changed}
+  return{dateKey,fromKey,shift,minutes,duration,summary,average,format,tone,segments,windowDates,history,prune};
 })();
 </script>
 <script id="health-app">
@@ -332,27 +336,37 @@ const Sleep = (()=>{
   const today=()=>Sleep.dateKey(new Date());
   let health;try{health=JSON.parse(localStorage.getItem(STORE))}catch{}if(!health||typeof health!=='object')health={};
   if(!health.days||typeof health.days!=='object'||Array.isArray(health.days))health.days={};
-  if(!health.archives||typeof health.archives!=='object'||Array.isArray(health.archives))health.archives={};
   const persist=()=>localStorage.setItem(STORE,JSON.stringify(health));
-  const weekLabel=(start,year=false)=>{const end=Sleep.shift(start,6),first=year?start.replaceAll('-','.'):start.slice(5).replace('-','.');return`${first} — ${end.slice(5).replace('-','.')}`};
+  const rangeLabel=(start,end)=>`${start.replaceAll('-','.')} — ${end.slice(5).replace('-','.')}`;
+  function renderTrend(date){
+    const records=Sleep.history(health,date),valid=records.filter(r=>r.minutes!==null),avg=valid.length?valid.reduce((n,r)=>n+r.minutes,0)/valid.length:null;
+    $('#sleepHistoryRange').textContent=rangeLabel(records[0].date,date);$('#sleepAverage').textContent=Sleep.format(avg);$('#sleepAverage').className=Sleep.tone(avg);$('#sleepCount').textContent=`${valid.length} / 30 日 · 目標 7時間`;
+    const left=38,right=868,top=18,bottom=210,maxHours=Math.max(10,Math.ceil(Math.max(0,...valid.map(r=>r.minutes/60))/2)*2),x=i=>left+(right-left)*i/29,y=n=>bottom-(bottom-top)*n/(maxHours*60);
+    const grid=[0,maxHours/2,maxHours].map(h=>`<line x1="${left}" y1="${y(h*60)}" x2="${right}" y2="${y(h*60)}" stroke="var(--line)"/><text x="26" y="${y(h*60)+4}" text-anchor="end">${h}h</text>`).join('');
+    const goal=`<line x1="${left}" y1="${y(420)}" x2="${right}" y2="${y(420)}" stroke="var(--muted)" stroke-dasharray="3 5" opacity=".5"/><text x="${right+8}" y="${y(420)+4}">7h</text>`;
+    const ticks=[0,7,14,21,29].map(i=>`<text x="${x(i)}" y="235" text-anchor="middle">${records[i].date.slice(5).replace('-','/')}</text>`).join('');
+    const paths=[];let run=[];for(let i=0;i<records.length;i++){const r=records[i];if(r.minutes===null){if(run.length>1)paths.push(run.join(' '));run=[]}else run.push(`${x(i)},${y(r.minutes)}`)}if(run.length>1)paths.push(run.join(' '));
+    const lines=paths.map(points=>`<polyline class="trend-line" points="${points}"/>`).join('');
+    const points=records.map((r,i)=>r.minutes===null?'':`<circle class="trend-point" cx="${x(i)}" cy="${y(r.minutes)}" r="4" tabindex="0" role="img" aria-label="${r.date} ${Sleep.format(r.minutes)}"><title>${r.date} · ${Sleep.format(r.minutes)}</title></circle>`).join('');
+    const empty=valid.length?'':`<text x="450" y="120" text-anchor="middle">睡眠を記録すると表示されます。</text>`;
+    $('#sleepChart').innerHTML=`<svg class="sleep-chart" viewBox="0 0 900 250" role="img" aria-label="過去30日間の日別睡眠時間。未入力日は点を表示しません。">${grid}${goal}${ticks}${lines}${points}${empty}</svg>`;
+  }
   function renderHealth(){
-    const date=today(),start=Sleep.monday(date);if(Sleep.archive(health,date))persist();
-    const dates=Array.from({length:7},(_,i)=>Sleep.shift(start,i));
-    const summary=Sleep.summary(dates.filter(d=>d<=date).map(d=>health.days[d])),avg=Sleep.average(summary);
-    $('#sleepWeek').textContent=weekLabel(start,true);$('#sleepAverage').textContent=Sleep.format(avg);$('#sleepAverage').className=Sleep.tone(avg);$('#sleepCount').textContent=`${summary.count} / 7 日 · 目標 7時間`;
+    const date=today();if(Sleep.prune(health,date))persist();
+    const dates=Sleep.windowDates(date);
+    $('#sleepWeek').textContent=rangeLabel(dates[0],dates[6]);
     $('#sleepRows').innerHTML=dates.map(d=>{
       const r=health.days[d]||{},future=d>date,disabled=future?'disabled':'',n=Sleep.duration(r.bed,r.wake),day=Sleep.fromKey(d);
       const bars=Sleep.segments(r.bed,r.wake).map(s=>`<i class="sleep-block" style="left:${s.start/14.4}%;width:${s.length/14.4}%" aria-hidden="true"></i>`).join('');
       const description=n===null?'未記録':`${r.bed}就寝、${r.wake}起床、${Sleep.format(n)}`;
       return`<form class="sleep-row ${d===date?'is-today':''} ${future?'is-future':''}" data-sleep-date="${d}" aria-label="${d}の睡眠"><span class="sleep-day">${day.getMonth()+1}/${day.getDate()}<small>${WEEKDAYS[day.getDay()]}</small></span><div class="sleep-times"><input type="time" name="bed" step="60" value="${Sleep.minutes(r.bed)!==null?r.bed:''}" aria-label="${d}の就寝時刻" ${disabled}><span aria-hidden="true">→</span><input type="time" name="wake" step="60" value="${Sleep.minutes(r.wake)!==null?r.wake:''}" aria-label="${d}の起床時刻" ${disabled}></div><div class="sleep-track" role="img" aria-label="${description}" title="${description}">${bars}</div><span class="sleep-duration">${Sleep.format(n)}</span><button class="sleep-save" type="submit" aria-label="${d}の睡眠を保存" title="保存" ${disabled}>✓</button></form>`;
     }).join('');
-    const archives=Object.entries(health.archives).filter(([k,v])=>Sleep.fromKey(k)&&k<start&&Number.isFinite(v?.totalMinutes)&&v?.count>0).sort(([a],[b])=>b.localeCompare(a));
-    $('#sleepArchives').innerHTML=archives.length?archives.map(([k,v])=>{const avg=Sleep.average(v);return`<div class="sleep-archive-row"><span>${weekLabel(k,true)}</span><strong class="${Sleep.tone(avg)}" aria-label="平均睡眠時間 ${Sleep.format(avg)}">${Sleep.format(avg)}</strong></div>`}).join(''):'<div class="empty">アーカイブはまだありません。</div>';
+    renderTrend(date);
   }
   $('#sleepRows').addEventListener('input',e=>{if(e.target.matches('input'))e.target.setCustomValidity('')});
   $('#sleepRows').addEventListener('submit',e=>{
     e.preventDefault();const form=e.target.closest('[data-sleep-date]');if(!form)return;const date=form.dataset.sleepDate;
-    if(date<Sleep.monday(today())||date>today()){renderHealth();$('#sleepStatus').textContent='日付が変わりました。今週の記録を確認してください。';return}
+    if(date<Sleep.shift(today(),-2)||date>today()){renderHealth();$('#sleepStatus').textContent='日付が変わりました。表示中の記録を確認してください。';return}
     const bed=form.elements.bed,wake=form.elements.wake;
     if(!bed.value&&!wake.value){delete health.days[date]}else{
       if(!bed.value||!wake.value){const missing=!bed.value?bed:wake;missing.setCustomValidity('就寝時刻と起床時刻を入力してください。');missing.reportValidity();return}
@@ -371,9 +385,9 @@ const Sleep = (()=>{
   $('#tasksTab').addEventListener('click',()=>navigate('tasks'));$('#healthTab').addEventListener('click',()=>navigate('health'));
   $('.screen-nav').addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const screen=e.key==='Home'?'tasks':e.key==='End'?'health':$('#taskScreen').hidden?'tasks':'health';navigate(screen);$('#'+(screen==='health'?'healthTab':'tasksTab')).focus()});
   window.addEventListener('hashchange',()=>setScreen(location.hash==='#health'?'health':'tasks'));
-  let lastDate=today();const rollover=()=>{if(today()===lastDate)return;lastDate=today();if(Sleep.archive(health,lastDate))persist();if(!$('#healthScreen').hidden)renderHealth();$('#date').textContent=`${String(new Date().getMonth()+1).padStart(2,'0')}.${String(new Date().getDate()).padStart(2,'0')} ${WEEKDAYS[new Date().getDay()]}`};
+  let lastDate=today();const rollover=()=>{if(today()===lastDate)return;lastDate=today();if(Sleep.prune(health,lastDate))persist();if(!$('#healthScreen').hidden)renderHealth();$('#date').textContent=`${String(new Date().getMonth()+1).padStart(2,'0')}.${String(new Date().getDate()).padStart(2,'0')} ${WEEKDAYS[new Date().getDay()]}`};
   setInterval(rollover,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)rollover()});window.addEventListener('focus',rollover);
-  if(Sleep.archive(health,today()))persist();setScreen(location.hash==='#health'?'health':'tasks');
+  if(Sleep.prune(health,today()))persist();setScreen(location.hash==='#health'?'health':'tasks');
 })();
 </script>
 </body>
