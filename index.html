@@ -319,7 +319,7 @@ const Sleep = (()=>{
   const duration=(bed,wake)=>{const b=minutes(bed),w=minutes(wake);if(b===null||w===null||b===w)return null;return(w-b+1440)%1440};
   const summary=records=>{let totalMinutes=0,count=0;for(const r of records){const n=duration(r?.bed,r?.wake);if(n!==null){totalMinutes+=n;count++}}return{totalMinutes,count}};
   const average=s=>s.count?s.totalMinutes/s.count:null;
-  const format=n=>{if(n===null)return'—';const m=Math.floor(n);return`${Math.floor(m/60)}時間${pad(m%60)}分`};
+  const format=n=>{if(n===null)return'—';const m=Math.floor(n);return`${Math.floor(m/60)}h${pad(m%60)}m`};
   const tone=n=>n===null?'sleep-empty':n<420?'sleep-short':'sleep-met';
   const segments=(bed,wake)=>{const n=duration(bed,wake);if(n===null)return[];const start=(minutes(bed)+360)%1440,first=Math.min(n,1440-start);return[{start,length:first},...(first<n?[{start:0,length:n-first}]:[])]};
   const windowDates=today=>Array.from({length:7},(_,i)=>shift(today,i-2));
