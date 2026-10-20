@@ -222,11 +222,10 @@
   </main>
   <main id="healthScreen" role="tabpanel" aria-labelledby="healthTab" hidden>
     <div class="sleep-heading"><h1>SLEEP</h1></div>
-    <div class="sleep-summary"><div><p class="sleep-week" id="sleepWeek"></p><p class="sleep-hint">起床した日に記録 · 2日前から7日間</p></div></div>
+    <div class="sleep-summary"><div><p class="sleep-week" id="sleepWeek"></p></div></div>
     <div class="sleep-scroll"><div class="sleep-grid"><div class="sleep-table-head" aria-hidden="true"><span>起床日</span><span>就寝 → 起床</span><div class="sleep-axis"><span>18:00</span><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span></div><span style="text-align:right">睡眠時間</span><span></span></div><div id="sleepRows"></div></div></div>
-    <p class="sleep-hint">就寝・起床を入力して ✓ で保存。未入力日は平均に含めません。</p>
     <div id="sleepStatus" class="sr-only" role="status" aria-live="polite"></div>
-    <section class="sleep-history"><div class="sleep-summary"><div><h2>LAST 30 DAYS</h2><p class="sleep-hint" id="sleepHistoryRange"></p></div><div class="sleep-average"><span class="sleep-hint">過去30日間の平均睡眠時間</span><strong id="sleepAverage">—</strong><span class="sleep-hint" id="sleepCount">0 / 30 日 · 目標 7時間</span></div></div><div class="sleep-scroll" id="sleepChart"></div><p class="sleep-hint">点にカーソルを合わせると日付と睡眠時間を表示。30日より古い記録は自動で削除します。</p></section>
+    <section class="sleep-history"><div class="sleep-summary"><div><h2>LAST 30 DAYS</h2><p class="sleep-hint" id="sleepHistoryRange"></p></div><div class="sleep-average"><span class="sleep-hint">平均</span><strong id="sleepAverage">—</strong></div></div><div class="sleep-scroll" id="sleepChart"></div></section>
   </main>
   <button class="add-button" id="openComposer" aria-label="タスクを追加">＋</button>
   <div class="backdrop" id="backdrop" role="dialog" aria-labelledby="composerTitle">
@@ -340,7 +339,7 @@ const Sleep = (()=>{
   const rangeLabel=(start,end)=>`${start.replaceAll('-','.')} — ${end.slice(5).replace('-','.')}`;
   function renderTrend(date){
     const records=Sleep.history(health,date),valid=records.filter(r=>r.minutes!==null),avg=valid.length?valid.reduce((n,r)=>n+r.minutes,0)/valid.length:null;
-    $('#sleepHistoryRange').textContent=rangeLabel(records[0].date,date);$('#sleepAverage').textContent=Sleep.format(avg);$('#sleepAverage').className=Sleep.tone(avg);$('#sleepCount').textContent=`${valid.length} / 30 日 · 目標 7時間`;
+    $('#sleepHistoryRange').textContent=rangeLabel(records[0].date,date);$('#sleepAverage').textContent=Sleep.format(avg);$('#sleepAverage').className=Sleep.tone(avg);
     const left=38,right=868,top=18,bottom=210,maxHours=Math.max(10,Math.ceil(Math.max(0,...valid.map(r=>r.minutes/60))/2)*2),x=i=>left+(right-left)*i/29,y=n=>bottom-(bottom-top)*n/(maxHours*60);
     const grid=[0,maxHours/2,maxHours].map(h=>`<line x1="${left}" y1="${y(h*60)}" x2="${right}" y2="${y(h*60)}" stroke="var(--line)"/><text x="26" y="${y(h*60)+4}" text-anchor="end">${h}h</text>`).join('');
     const goal=`<line x1="${left}" y1="${y(420)}" x2="${right}" y2="${y(420)}" stroke="var(--muted)" stroke-dasharray="3 5" opacity=".5"/><text x="${right+8}" y="${y(420)+4}">7h</text>`;
@@ -348,7 +347,7 @@ const Sleep = (()=>{
     const paths=[];let run=[];for(let i=0;i<records.length;i++){const r=records[i];if(r.minutes===null){if(run.length>1)paths.push(run.join(' '));run=[]}else run.push(`${x(i)},${y(r.minutes)}`)}if(run.length>1)paths.push(run.join(' '));
     const lines=paths.map(points=>`<polyline class="trend-line" points="${points}"/>`).join('');
     const points=records.map((r,i)=>r.minutes===null?'':`<circle class="trend-point" cx="${x(i)}" cy="${y(r.minutes)}" r="4" tabindex="0" role="img" aria-label="${r.date} ${Sleep.format(r.minutes)}"><title>${r.date} · ${Sleep.format(r.minutes)}</title></circle>`).join('');
-    const empty=valid.length?'':`<text x="450" y="120" text-anchor="middle">睡眠を記録すると表示されます。</text>`;
+    const empty=valid.length?'':`<text x="450" y="120" text-anchor="middle">記録なし</text>`;
     $('#sleepChart').innerHTML=`<svg class="sleep-chart" viewBox="0 0 900 250" role="img" aria-label="過去30日間の日別睡眠時間。未入力日は点を表示しません。">${grid}${goal}${ticks}${lines}${points}${empty}</svg>`;
   }
   function renderHealth(){
