@@ -204,6 +204,31 @@
       .repeat { grid-column:1; }
     }
     @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; } }
+
+    .diary-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; }
+    .diary-top h1 { font-size:1rem; font-weight:400; font-variant-numeric:tabular-nums; }
+    .diary-arrows { display:flex; gap:20px; }
+    .diary-arrows button { border:0; background:none; color:#000; font:inherit; font-size:20px; cursor:pointer; padding:8px; }
+    .diary-week,.diary-calendar { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+    .diary-week span { text-align:center; font-size:10px; padding:12px 0; color:#000; }
+    .diary-calendar { border-top:1px solid #000; border-left:1px solid #000; }
+    .diary-day,.diary-blank { min-height:90px; border:0; border-right:1px solid #000; border-bottom:1px solid #000; background:#fff; color:#000; position:relative; }
+    .diary-day { text-align:left; padding:12px; font:inherit; font-size:12px; cursor:pointer; display:flex; align-items:flex-start; }
+    .diary-day:hover,.diary-day:focus-visible { background:#eee; }
+    .diary-day[aria-current=date] span { background:#000; color:#fff; border-radius:50%; }
+    .diary-day span { display:grid; place-items:center; width:24px; height:24px; }
+    .diary-day.has-entry:after { content:''; position:absolute; bottom:12px; left:calc(50% - 2px); width:4px; height:4px; border-radius:50%; background:#000; }
+    #diaryDialog { width:min(420px,calc(100vw - 40px)); padding:28px; border:1px solid #000; color:#000; background:#fff; }
+    #diaryDialog::backdrop { background:rgba(0,0,0,.25); }
+    .diary-dialog-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+    .diary-dialog-head h2 { font-size:14px; font-weight:400; margin:0; }
+    #diaryClose { border:0; background:none; font-size:22px; cursor:pointer; color:#000; }
+    #diaryDate { font-size:11px; margin:0 0 16px; }
+    #diaryText { width:100%; min-height:150px; padding:0; border:0; resize:vertical; font:inherit; font-size:13px; line-height:1.8; color:#000; background:#fff; }
+    .diary-bottom { display:flex; align-items:center; justify-content:space-between; margin-top:20px; }
+    #diaryCounter { font-size:10px; }
+    #diarySave { background:#000; color:#fff; padding:8px 20px; border:1px solid #000; cursor:pointer; font:inherit; font-size:12px; }
+    @media(max-width:700px) { .diary-day,.diary-blank { min-height:64px; } .diary-day { padding:4px; } }
   </style>
 </head>
 <body>
@@ -211,6 +236,7 @@
   <nav class="screen-nav" role="tablist" aria-label="画面切り替え" aria-orientation="vertical">
     <button class="screen-tab" id="tasksTab" type="button" role="tab" aria-label="task&routine" aria-controls="taskScreen" aria-selected="true" title="task&routine"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 6 2 2 3-4M12 6h8M4 13h4v4H4zM12 15h8"/></svg></button>
     <button class="screen-tab" id="healthTab" type="button" role="tab" aria-label="health" aria-controls="healthScreen" aria-selected="false" tabindex="-1" title="health"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.4A8.5 8.5 0 0 1 9.6 4 8.5 8.5 0 1 0 20 14.4Z"/></svg></button>
+    <button class="screen-tab" id="diaryTab" type="button" role="tab" aria-label="dialy" aria-controls="diaryScreen" aria-selected="false" tabindex="-1" title="dialy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></button>
   </nav>
   <main id="taskScreen" role="tabpanel" aria-labelledby="tasksTab">
     <section class="today-section"><div class="section-head"><h1>TODAY</h1><span id="todayCount"></span></div><div class="task-list" id="todayTasks"></div><button class="inline-add" type="button" data-add-due="today">＋ タスクを追加</button><div class="today-routines" id="todayRoutines"></div></section>
@@ -227,6 +253,11 @@
     <div id="sleepStatus" class="sr-only" role="status" aria-live="polite"></div>
     <section class="sleep-history"><div class="sleep-summary"><div><h2>LAST 30 DAYS</h2><p class="sleep-hint" id="sleepHistoryRange"></p></div><div class="sleep-average"><span class="sleep-hint">平均</span><strong id="sleepAverage">—</strong></div></div><div class="sleep-scroll" id="sleepChart"></div></section>
   </main>
+  <main id="diaryScreen" role="tabpanel" aria-labelledby="diaryTab" hidden>
+    <div class="diary-top"><h1 id="diaryMonth"></h1><div class="diary-arrows"><button id="diaryPrev" type="button" aria-label="前の月">←</button><button id="diaryNext" type="button" aria-label="次の月">→</button></div></div>
+    <div class="diary-week" aria-hidden="true"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div><div class="diary-calendar" id="diaryCalendar"></div>
+  </main>
+  <dialog id="diaryDialog" aria-labelledby="diaryTitle"><form id="diaryForm"><div class="diary-dialog-head"><h2 id="diaryTitle">日記</h2><button id="diaryClose" type="button" aria-label="閉じる">×</button></div><p id="diaryDate"></p><textarea id="diaryText" aria-label="日記" maxlength="100"></textarea><div class="diary-bottom"><span id="diaryCounter">0 / 100</span><button id="diarySave" type="submit">保存</button></div></form></dialog>
   <button class="add-button" id="openComposer" aria-label="タスクを追加">＋</button>
   <div class="backdrop" id="backdrop" role="dialog" aria-labelledby="composerTitle">
     <form class="composer" id="composer">
@@ -375,18 +406,46 @@ const Sleep = (()=>{
     persist();renderHealth();$('#sleepStatus').textContent=`${date}の睡眠を保存しました。`;
   });
   function setScreen(screen){
-    const isHealth=screen==='health';$('#closeComposer').click();$('#routineNoteTooltip').hidden=true;
-    $('#taskScreen').hidden=isHealth;$('#healthScreen').hidden=!isHealth;$('#openComposer').hidden=isHealth;$('#screenLabel').textContent=isHealth?'health':'task&routine';
-    for(const [id,selected] of [['tasksTab',!isHealth],['healthTab',isHealth]]){$('#'+id).setAttribute('aria-selected',String(selected));$('#'+id).tabIndex=selected?0:-1}
+    const isHealth=screen==='health',isDiary=screen==='dialy';$('#closeComposer').click();$('#routineNoteTooltip').hidden=true;
+    $('#taskScreen').hidden=isHealth||isDiary;$('#diaryScreen').hidden=!isDiary;$('#healthScreen').hidden=!isHealth;$('#openComposer').hidden=isHealth||isDiary;$('#screenLabel').textContent=isDiary?'dialy':isHealth?'health':'task&routine';
+    for(const [id,selected] of [['tasksTab',!isHealth&&!isDiary],['healthTab',isHealth],['diaryTab',isDiary]]){$('#'+id).setAttribute('aria-selected',String(selected));$('#'+id).tabIndex=selected?0:-1}
     if(isHealth)renderHealth();window.scrollTo({top:0,behavior:'instant'});
   }
-  const navigate=screen=>{const hash=screen==='health'?'#health':'#tasks';if(location.hash===hash)setScreen(screen);else location.hash=hash};
-  $('#tasksTab').addEventListener('click',()=>navigate('tasks'));$('#healthTab').addEventListener('click',()=>navigate('health'));
-  $('.screen-nav').addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const screen=e.key==='Home'?'tasks':e.key==='End'?'health':$('#taskScreen').hidden?'tasks':'health';navigate(screen);$('#'+(screen==='health'?'healthTab':'tasksTab')).focus()});
-  window.addEventListener('hashchange',()=>setScreen(location.hash==='#health'?'health':'tasks'));
+  const navigate=screen=>{const hash=screen==='dialy'?'#dialy':screen==='health'?'#health':'#tasks';if(location.hash===hash)setScreen(screen);else location.hash=hash};
+  $('#diaryTab').addEventListener('click',()=>navigate('dialy'));$('#tasksTab').addEventListener('click',()=>navigate('tasks'));$('#healthTab').addEventListener('click',()=>navigate('health'));
+  $('.screen-nav').addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const tabs=['tasks','health','dialy'],i=tabs.indexOf(location.hash.slice(1));const next=e.key==='Home'?0:e.key==='End'?2:(Math.max(0,i)+(e.key==='ArrowDown'?1:2))%3;navigate(tabs[next]);$('#'+['tasksTab','healthTab','diaryTab'][next]).focus()});
+  window.addEventListener('hashchange',()=>setScreen(location.hash==='#dialy'?'dialy':location.hash==='#health'?'health':'tasks'));
   let lastDate=today();const rollover=()=>{if(today()===lastDate)return;lastDate=today();if(Sleep.prune(health,lastDate))persist();if(!$('#healthScreen').hidden)renderHealth();$('#date').textContent=`${String(new Date().getMonth()+1).padStart(2,'0')}.${String(new Date().getDate()).padStart(2,'0')} ${WEEKDAYS[new Date().getDay()]}`};
   setInterval(rollover,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)rollover()});window.addEventListener('focus',rollover);
-  if(Sleep.prune(health,today()))persist();setScreen(location.hash==='#health'?'health':'tasks');
+  if(Sleep.prune(health,today()))persist();setScreen(location.hash==='#dialy'?'dialy':location.hash==='#health'?'health':'tasks');
+})();
+</script>
+
+<script id="diary-app">
+(()=>{
+ const $=s=>document.querySelector(s),key='mono-diary-v1',pad=n=>String(n).padStart(2,'0');
+ let entries={};try{const v=JSON.parse(localStorage.getItem(key));if(v&&typeof v==='object'&&!Array.isArray(v))entries=v}catch{}
+ let month=new Date(new Date().getFullYear(),new Date().getMonth(),1),selected='',lastButton;
+ const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+ function render(){
+  $('#diaryMonth').textContent=`${month.getFullYear()}.${pad(month.getMonth()+1)}`;
+  const calendar=$('#diaryCalendar');calendar.replaceChildren();
+  const days=new Date(month.getFullYear(),month.getMonth()+1,0).getDate(),start=month.getDay(),total=Math.ceil((start+days)/7)*7;
+  for(let i=0;i<total;i++){
+   const day=i-start+1,valid=day>0&&day<=days,el=document.createElement(valid?'button':'div');
+   el.className=valid?'diary-day':'diary-blank';
+   if(valid){const date=dateKey(new Date(month.getFullYear(),month.getMonth(),day));el.type='button';el.dataset.date=date;el.setAttribute('aria-label',date+(entries[date]?' 日記あり':''));if(date===dateKey(new Date()))el.setAttribute('aria-current','date');if(entries[date])el.classList.add('has-entry');const span=document.createElement('span');span.textContent=day;el.append(span);el.addEventListener('click',()=>open(date,el))}else el.setAttribute('aria-hidden','true');calendar.append(el);
+  }
+ }
+ function count(){let text=$('#diaryText').value;const chars=Array.from(text);if(chars.length>100){text=chars.slice(0,100).join('');$('#diaryText').value=text}$('#diaryCounter').textContent=`${Array.from(text).length} / 100`}
+ function open(date,button){selected=date;lastButton=button;$('#diaryDate').textContent=date.replaceAll('-','.');$('#diaryText').value=typeof entries[date]==='string'?entries[date]:'';count();$('#diaryDialog').showModal();$('#diaryText').focus()}
+ $('#diaryPrev').addEventListener('click',()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);render()});
+ $('#diaryNext').addEventListener('click',()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);render()});
+ $('#diaryText').addEventListener('input',count);
+ $('#diaryClose').addEventListener('click',()=>$('#diaryDialog').close());
+ $('#diaryDialog').addEventListener('close',()=>lastButton?.focus());
+ $('#diaryForm').addEventListener('submit',e=>{e.preventDefault();count();const text=$('#diaryText').value,next={...entries};if(text.trim())next[selected]=text;else delete next[selected];try{localStorage.setItem(key,JSON.stringify(next))}catch{alert('保存できませんでした。');return}entries=next;$('#diaryDialog').close();render();$('#diaryCalendar').querySelector(`[data-date="${selected}"]`)?.focus()});
+ render();
 })();
 </script>
 </body>
